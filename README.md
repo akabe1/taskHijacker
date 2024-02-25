@@ -24,6 +24,10 @@ Task Hijacking PoC attack.
 
 # Requirements:
 In order to patch the attacker APK it is needed to use a keystore to re-sign it.
+In addition the following tools are necessary:
+* apktool
+* zipalign
+* apksigner
 
 
 # References
