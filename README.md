@@ -73,13 +73,13 @@ Note that during the re-signing of the attacker APK, the script will ask you to 
 * Keystore password
 * Keystore alias
 
-An example of the prompt below.
+Below an example of the script prompt filled with some keystore data:
 ```
 ...
 [+] Starting the APK signing procedure, in order to continue a keystore is needed...
->>> Enter your keystore fullpath: 
->>> Enter your keystore password: 
->>> Enter your keystore alias:
+>>> Enter your keystore fullpath: /home/user/Downloads/objection-master/objection/utils/assets/objection.jks
+>>> Enter your keystore password: XXXXXXXX
+>>> Enter your keystore alias: objection
 ...
 ```
 
