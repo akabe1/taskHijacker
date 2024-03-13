@@ -21,6 +21,12 @@ Optionally, the script allows to set a custom background image on the attacker A
 order to mask it (e.g. using the home screen of the victim APK) on device's screen during the 
 Task Hijacking PoC attack.
 
+Task Hijacking remediation alternatives:
+* Set/add the attribute "taskAffinity" to empty string value on Android-Manifest for the vulnerable activity.
+* Set/add the attribute "taskAffinity" to empty string value on the "application" tag of the Android-Manifest, in case the vulnerable activity has no "taskAffinity" attribute and you do not want to add one.
+* Set/add the flag "launchMode" to "singleInstance" on Android-Manifest for the vulnerable activity.
+* Implement a custom "onBackPressed()" function to override the default behaviour with a safe one.
+
 
 # Requirements:
 In order to patch the attacker APK it is needed to use a keystore to re-sign it.
