@@ -72,7 +72,7 @@ def decode_apk(input_apk, verbose):
         outs, errs = apktool.communicate()
         if verbose:
             if (outs is not None) and (len(outs) != 0):
-                print("[+] Decoding the APK: " + outs.decode("ascii"))
+                print("[D] Decoding the APK: " + outs.decode("ascii"))
         if (errs is not None) and (len(errs) != 0):
             print("[-] Error whend ecoding the APK: " + errs.decode("ascii"))
             exit(1)
@@ -95,7 +95,7 @@ def build_apk(input_apk, apk_dir, verbose):
         if verbose:
             if (outs is not None) and (len(outs) != 0):
                 # Check if built successfully
-                if "I: Built apk..." in outs.decode("ascii"):
+                if "[D] I: Built apk..." in outs.decode("ascii"):
                     build_ok = True
                 print("[+] Building the attacker APK: " + outs.decode("ascii"))
         if (errs is not None) and (len(errs) != 0) and not build_ok:
@@ -118,7 +118,7 @@ def align_apk(input_apk, verbose):
         outs, errs = zipalign.communicate()
         if verbose:
             if (outs is not None) and (len(outs) != 0):
-                print("[+] Aligning the attacker APK: " + outs.decode("ascii"))
+                print("[D] Aligning the attacker APK: " + outs.decode("ascii"))
         if len(errs) != 0:
             print("[-] Error whend ecoding the APK: " + errs.decode("ascii"))
             exit(1)
@@ -186,7 +186,7 @@ def sign_apk(input_apk, verbose):
 
         if verbose:
             if (outs is not None) and (len(outs) != 0):
-                print(outs.decode("ascii"))
+                print("[D] Output apksigner: " + outs.decode("ascii"))
         if (errs is not None) and (len(errs) != 0):
             print("[-] Error occurred during APK signing, 'apksigner' returns: " + errs.decode("ascii"))
             exit(1)
@@ -324,7 +324,7 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
     outs, errs = copy.communicate()
     if verbose:
         if (outs is not None) and (len(outs) != 0):
-            print("[+] Copying the backgroung image into the APK location '" + image_dir + "'.\n"  + outs.decode("ascii"))
+            print("[D] Copying the backgroung image into the APK location '" + image_dir + "'.\n"  + outs.decode("ascii"))
     if (errs is not None) and (len(errs) != 0):
         raise Exception(errs.decode("ascii"))
 
@@ -338,24 +338,51 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
     # Retrieving the layout filename of the activities to modify
     for activity_name in ["MainActivity", evil_activity]:
         if activity_name:
-            # The smali file of the specific searched activity
-            smali_filename = apk_dir + "/smali/" + smali_package + "/" + activity_name + ".smali"
-            smali_content = read_file(smali_filename)
-            # Retrieve the id of the searched layout file
-            m_obj = re.search("onCreate.*(0x[a-fA-F0-9]{8}).*setContentView", smali_content, re.DOTALL)
-            if m_obj:
-                layout_id = m_obj.group(1)
+            # Setting max search limit to 30 smali classes
+            for smali_count in range(31):
+                if smali_count == 0:
+                    smali_path = "/smali/"
+                else:
+                    smali_path = "/smali_classes" + str(smali_count) + "/"
+                # Starting the search for the specific malicious acivity smali file                
+                smali_filename = apk_dir + smali_path + smali_package + "/" + activity_name + ".smali"
                 if verbose:
-                    print("Found the identifier for the '" + activity_name + "' activity layout on " + layout_id)
-            # The smali file containing the list of layout filenames
-            smali_layout_file = apk_dir + "/smali/" + smali_package + "/R$layout.smali"
-            smali_content = read_file(smali_layout_file)
-            # Retrieve the name of the searched layout file
-            m_obj = re.search("static final ([\\w]+):[\\w]*?\\s]?\\=[\\s]?"+layout_id, smali_content, re.DOTALL)
-            if m_obj:
-                layout_file = m_obj.group(1)+".xml"
+                    print("[D] Trying with activity file '" + smali_filename + "'...")
+                if os.path.isfile(smali_filename):
+                    try:
+                        smali_content = read_file(smali_filename)
+                    except IOError:
+                        print("[!] Not found the activity file '" + smali_filename + "', continuing the search..")
+                        continue
+                    # Retrieving the id of the searched layout file
+                    m_obj = re.search("onCreate.*(0x[a-fA-F0-9]{8}).*setContentView", smali_content, re.DOTALL)
+                    if m_obj:
+                        layout_id = m_obj.group(1)
+                        if verbose:
+                            print("[D] Found the identifier for the '" + activity_name + "' activity layout on " + layout_id)
+            # Setting max search limit to 30 smali classes
+            for smali_count in range(31):
+                if smali_count == 0:
+                    smali_path = "/smali/"
+                else:
+                    smali_path = "/smali_classes" + str(smali_count) + "/"
+                # Starting the search for the smali file containing the list of layout filenames
+                smali_layout_file = apk_dir + smali_path + smali_package + "/R$layout.smali"
                 if verbose:
-                    print("Found the layout filename for the '" + activity_name + "' activity on " + layout_file)
+                    print("[D] Trying with layout file '" + smali_filename + "'...")
+                if os.path.isfile(smali_filename):
+                    try:
+                        smali_content = read_file(smali_filename)
+                    except IOError:
+                        print("[!] Not found the layout file '" + smali_filename + "', continuing the search..")
+                        continue
+                    # Retrieving the name of the searched layout file
+                    m_obj = re.search("static final ([\\w]+):[\\w]*?\\s]?\\=[\\s]?"+layout_id, smali_content, re.DOTALL)
+                    if m_obj:
+                        layout_file = m_obj.group(1)+".xml"
+                        if verbose:
+                            print("[D] Found the layout filename for the '" + activity_name + "' activity on " + layout_file)
+            # Starting to change the app background
             if layout_file:
                 # Search for the specific activity layout files recursively into layout folder
                 layout_dir = apk_dir + "/res/"
@@ -364,11 +391,11 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
                         if file == layout_file:
                             bg_path = rootpath+"/"+file
                             if verbose:
-                                 print("[+] Found '" + activity_name + "' activity layout file on path '" + bg_path + "'")
+                                 print("[D] Found '" + activity_name + "' activity layout file on path '" + bg_path + "'")
                             xml = ElementTree.parse(bg_path)
                             root = xml.getroot()
                             # Identify the root tag into the layout xml file and set the new background image on it
-                            for layout_type in ["RelativeLayout", "LinearLayout", "androidx.constraintlayout.widget.ConstraintLayout", "AbsoluteLayout", "FrameLayout", "GridLayout"]:
+                            for layout_type in ["RelativeLayout", "LinearLayout", "androidx.constraintlayout.widget.ConstraintLayout", "android.support.constraint.ConstraintLayout", "AbsoluteLayout", "FrameLayout", "GridLayout"]:
                                 layout_found = False
                                 if root.tag == layout_type:
                                     layout_found = True
