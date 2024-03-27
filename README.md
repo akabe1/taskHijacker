@@ -5,9 +5,12 @@ taskHijacker
 This script has the purpose to facilitate practical Proof-of-Concept when testing Task Hijacking vulnerability on Android apps. 
 It permits to turn an harmless APK into a malicious APK able to exploit the following specific Task Hijacking security issues:
 
-(1) when the victim APK is configured with an activity having the flag "launchMode" set 
-    to "singleTask", or the APK presents an activity that is started using Intent configured
-    with the flag "FLAG_ACTIVITY_NEW_TASK"                                            
+(1) when the victim APK is configured with an activity having the "launchMode" flag set to 
+    "singleTask" mode, or the APK presents an activity that is started using Intent configured
+    with the flag "FLAG_ACTIVITY_NEW_TASK"
+    (NOTE: by default the MainActivity results vulnerable if into the AndroidManifest file 
+    there is not an attribute "taskAffinity" set to empty string on the 'activity' and/or 
+    'application' tag, nor is the "launchMode" flag set to "singleInstance" mode)                                       
 
 (2) when the victim APK is configured with an activity having the flag "allowTaskReparenting" 
     set to "true"                                                             
@@ -45,14 +48,42 @@ In addition the following tools are necessary:
 In order to run the taskHijacker script it is needed at least to specify an exploitation mode ('--misconfig_task'/'-m' or '--cuckoo_task'/'-c'), 
 the victim app package-name, and the path where is located your harmless APK to turn into a malicious APK.
 In particular, regarding the exploitation modes:
-* 'misconfig_task' allows to exploit the Task Hijacing issues (1) and (2) 
-* 'cuckoo_task' allows to exploit the Task Hijacking issue (3)
+* '--misconfig_task|-m' allows to exploit the Task Hijacing issues (1) and (2) 
+* '--cuckoo_task|-c' allows to exploit the Task Hijacking issue (3)
 
-Use the "--help" option for a more exhaustive explaination.
 
+The following '--help|-h' output provides a more exhaustive explaination:
 ```
-python3 taskHijacker.py --misconfig_task|--cuckoo_task <VICTIM-PACKAGE-NAME> -a <PATH/TO/YOUR/APK>.apk
+python3 taskHijacker.py -h
+usage: taskHijacker [-h] [-m PACKAGE_NAME] [-c PACKAGE_NAME] [-e EVIL_ACTIVITY] [-i IMG_BG] [-d DIR_BG]
+                    -a APK [-v]
+
+options:
+  -h, --help            show this help message and exit
+  -m PACKAGE_NAME, --misconfig_task PACKAGE_NAME
+                        Specify the package-name of the victim APK to exploit victim APK task
+                        misconfigurations. It modifies only the the 'taskAffinity' flag into the
+                        attacker APK
+  -c PACKAGE_NAME, --cuckoo_task PACKAGE_NAME
+                        Specify the package-name of the victim APK to exploit an unsafe Android OS
+                        feature. It modifies both the 'taskAffinity' and 'allowTaskReparenting' flags
+                        into the attacker APK
+  -e EVIL_ACTIVITY, --evil_activity EVIL_ACTIVITY
+                        Specify the activity-name of the attacker APK used to perform the Task
+                        Hijacking attack (default is the main activity)
+  -i IMG_BG, --img_bg IMG_BG
+                        Specify the fullpath of the image file to set as background on the attacker APK
+  -d DIR_BG, --dir_bg DIR_BG
+                        Specify the location where put the background image into the attacker APK. It
+                        should be a relative path within 'res/' folder (default is 'res/drawable/')
+  -a APK, --apk APK     Specify the fullpath of the APK to turn into the attacker APK. The new attacker
+                        APK will be generated on the same location
+  -v, --verbose         Enable verbose output
+
+Additional note: a keystore is needed in order to re-sign the patched attacker APK
 ```
+
+
 
 Some examples below.
 
