@@ -46,7 +46,7 @@ In addition the following tools are necessary:
 
 # Usage
 In order to run the taskHijacker script it is needed at least to specify an exploitation mode ('--misconfig_task'/'-m' or '--cuckoo_task'/'-c'), 
-the victim app package-name, and the path where is located your harmless APK to turn into a malicious APK.
+the victim app package-name (or the target custom taskAffinity), and the path where is located your harmless APK to turn into a malicious APK.
 In particular, regarding the exploitation modes:
 * '--misconfig_task|-m' allows to exploit the Task Hijacing issues (1) and (2) 
 * '--cuckoo_task|-c' allows to exploit the Task Hijacking issue (3)
@@ -61,13 +61,13 @@ usage: taskHijacker [-h] [-m PACKAGE_NAME] [-c PACKAGE_NAME] [-e EVIL_ACTIVITY] 
 options:
   -h, --help            show this help message and exit
   -m PACKAGE_NAME, --misconfig_task PACKAGE_NAME
-                        Specify the package-name of the victim APK to exploit victim APK task
-                        misconfigurations. It modifies only the the 'taskAffinity' flag into the
-                        attacker APK
+                        Specify the package-name (or the target custom taskAffinity) of the victim APK
+                        to exploit victim APK task misconfigurations. It modifies only the the
+                        'taskAffinity' flag into the attacker APK
   -c PACKAGE_NAME, --cuckoo_task PACKAGE_NAME
-                        Specify the package-name of the victim APK to exploit an unsafe Android OS
-                        feature. It modifies both the 'taskAffinity' and 'allowTaskReparenting' flags
-                        into the attacker APK
+                        Specify the package-name (or the target custom taskAffinity) of the victim APK
+                        to exploit an unsafe Android OS feature. It modifies both the 'taskAffinity' and
+                        'allowTaskReparenting' flags into the attacker APK
   -e EVIL_ACTIVITY, --evil_activity EVIL_ACTIVITY
                         Specify the activity-name of the attacker APK used to perform the Task
                         Hijacking attack (default is the main activity)
