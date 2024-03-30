@@ -7,17 +7,20 @@ It permits to turn an harmless APK into a malicious APK able to exploit the foll
 
 (1) when the victim APK is configured with an activity having the "launchMode" flag set to 
     "singleTask" mode, or the APK presents an activity that is started using Intent configured
-    with the flag "FLAG_ACTIVITY_NEW_TASK"
-    (NOTE: by default the MainActivity results vulnerable if into the AndroidManifest file 
-    there is not an attribute "taskAffinity" set to empty string on the 'activity' and/or 
-    'application' tag, nor is the "launchMode" flag set to "singleInstance" mode)                                       
+    with the flag "FLAG_ACTIVITY_NEW_TASK"                                    
 
 (2) when the victim APK is configured with an activity having the flag "allowTaskReparenting" 
-    set to "true"                                                             
+    set to "true"    
 
-(3) when the malicious APK is configured with an activity having both the flag "allowTaskReparenting" 
-    set to "true" and the flag "taskAffinity" set to the victim package value (NOTE: this issue 
-    is related to an unsafe feature of Android OS, then works against any victim APK).  
+(3) when the victim APK presents a main activity configured witouth any of the possible Task 
+    Hijacking fixes. This is because in Android the main activity in Android at startup behave 
+    as if it has an Intent configured with the flag "FLAG_ACTIVITY_NEW_TASK"
+
+(4) when the malicious APK is configured with an activity having both the flag "allowTaskReparenting" 
+    set to "true" and the flag "taskAffinity" set to the victim package value (or to a target custom 
+    taskAffinity declared in the victim APK). 
+    It is to note that this issue is related to an unsafe feature of Android OS, then the exploit 
+    works against any victim APK.  
 
 
 Optionally, the script allows to set a custom background image on the attacker APK in 
@@ -48,8 +51,8 @@ In addition the following tools are necessary:
 In order to run the taskHijacker script it is needed at least to specify an exploitation mode ('--misconfig_task'/'-m' or '--cuckoo_task'/'-c'), 
 the victim app package-name (or the target custom taskAffinity), and the path where is located your harmless APK to turn into a malicious APK.
 In particular, regarding the exploitation modes:
-* '--misconfig_task|-m' allows to exploit the Task Hijacing issues (1) and (2) 
-* '--cuckoo_task|-c' allows to exploit the Task Hijacking issue (3)
+* '--misconfig_task|-m' allows to exploit the Task Hijacing issues (1), (2) and (3) 
+* '--cuckoo_task|-c' allows to exploit the Task Hijacking issue (4)
 
 
 The following '--help|-h' output provides a more exhaustive explaination:
