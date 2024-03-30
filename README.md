@@ -13,7 +13,7 @@ It permits to turn an harmless APK into a malicious APK able to exploit the foll
     set to "true"    
 
 (3) when the victim APK presents a main activity configured witouth any of the possible Task 
-    Hijacking fixes. This is because in Android the main activity at startup behave 
+    Hijacking fixes. This is because in Android the main activity at startup behaves 
     as if it has an Intent configured with the flag "FLAG_ACTIVITY_NEW_TASK"
 
 (4) when the malicious APK is configured with an activity having both the flag "allowTaskReparenting" 
