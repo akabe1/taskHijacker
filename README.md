@@ -125,6 +125,10 @@ Below an example of the script prompt filled with some keystore data:
 
 
 
+# Note
+In the Release section there is an auxiliary harmful APK that can be used to generate a PoC APK with this tool.
+
+
 # Author
 taskHijacker was developed by Maurizio Siddu
 
