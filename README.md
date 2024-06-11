@@ -32,6 +32,7 @@ Task Hijacking remediation alternatives:
 * Set/add the attribute "taskAffinity" to empty string value on the "application" tag of the Android-Manifest, in case the vulnerable activity has no "taskAffinity" attribute and you do not want to add one.
 * Set/add the flag "launchMode" to "singleInstance" on Android-Manifest for the vulnerable activity.
 * Implement a custom "onBackPressed()" function to override the default behaviour with a safe one.
+* For the activities that are started using an Intent with the flag "FLAG_ACTIVITY_NEW_TASK" add also the flag "FLAG_ACTIVITY_CLEAR_TASK" in the application code.
 
 
 # Requirements:
